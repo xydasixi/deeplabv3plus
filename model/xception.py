@@ -147,7 +147,7 @@ class Modified_Aligned_Xception(nn.Module):
         self.entry = Entry_Flow()
         self.middle = Middle_Flow()
         self.exit = Exit_Flow()
-
+        self._initialize_weights()
     def forward(self, input):
         out = self.entry(input)
         out = self.middle(out)
