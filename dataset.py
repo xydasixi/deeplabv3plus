@@ -1,11 +1,9 @@
 import numpy as np
-import os,random,cv2
-import torch.utils.data as data
+import os,random
 from PIL import Image
 import torch
-from torchvision import transforms as T
 from torchvision.transforms import functional as F
-
+from torchvision import transforms as T
 
 class data_import():
     def __init__(self, root_path, transforms=None):
@@ -16,57 +14,32 @@ class data_import():
         mask_list = os.listdir(mask_path)
         self.img = [os.path.join(image_path, x ) for x in image_list]
         self.mask = [os.path.join(mask_path, x ) for x in mask_list]
-
-        self.transforms = SegmentationPresetTrain(520, 480)
-        self.test(self.img[0], self.mask[0])
-        l = 0
-    def test(self, img, mask):
-        img = Image.open(img).convert('RGB')
-        mask = Image.open(mask)
-        img, target = self.transforms(img, mask)
-        # l=0
+        self.transforms = transforms
     def __getitem__(self, index):
         img = Image.open(self.img[index]).convert('RGB')
         target = Image.open(self.mask[index])
-
         img, target = self.transforms(img, target)
-
         return img, target
 
     def __len__(self):
         return len(self.img)
 
-class SegmentationPresetTrain:
-    def __init__(self, base_size, crop_size, hflip_prob=0.5, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
-        min_size = int(0.5 * base_size)
-        max_size = int(2.0 * base_size)
-
-        trans = [RandomResize(min_size, max_size)]
-        if hflip_prob > 0:
-            trans.append(RandomHorizontalFlip(hflip_prob))
-        trans.extend([
-            RandomCrop(crop_size),
-            ToTensor(),
-            Normalize(mean=mean, std=std),
-        ])
+class get_transform():
+    def __init__(self, base_size, crop_size, train = True, hflip_prob=0.5, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+        trans = []
+        if train:
+            min_size = int(0.5 * base_size)
+            max_size = int(2.0 * base_size)
+            trans.extend([RandomResize(min_size, max_size), RandomHorizontalFlip(hflip_prob), RandomCrop(crop_size),])
+        else:
+            trans.append(RandomResize(base_size, base_size))
+        trans.extend([ToTensor(),Normalize(mean=mean, std=std),])
         self.transforms = Compose(trans)
 
     def __call__(self, img, target):
         return self.transforms(img, target)
 
-
-def pad_if_smaller(img, size, fill=0):
-    # 如果图像最小边长小于给定size，则用数值fill进行padding
-    min_size = min(img.size)
-    if min_size < size:
-        ow, oh = img.size
-        padh = size - oh if oh < size else 0
-        padw = size - ow if ow < size else 0
-        img = F.pad(img, (0, 0, padw, padh), fill=fill)
-    return img
-
-
-class Compose(object):
+class Compose():
     def __init__(self, transforms):
         self.transforms = transforms
 
@@ -75,8 +48,7 @@ class Compose(object):
             image, target = t(image, target)
         return image, target
 
-
-class RandomResize(object):
+class RandomResize():
     def __init__(self, min_size, max_size=None):
         self.min_size = min_size
         if max_size is None:
@@ -92,8 +64,7 @@ class RandomResize(object):
         target = F.resize(target, size, interpolation=T.InterpolationMode.NEAREST)
         return image, target
 
-
-class RandomHorizontalFlip(object):
+class RandomHorizontalFlip():
     def __init__(self, flip_prob):
         self.flip_prob = flip_prob
 
@@ -104,37 +75,36 @@ class RandomHorizontalFlip(object):
         return image, target
 
 
-class RandomCrop(object):
+class RandomCrop():
     def __init__(self, size):
         self.size = size
 
     def __call__(self, image, target):
-        image = pad_if_smaller(image, self.size)
-        target = pad_if_smaller(target, self.size, fill=255)
+        image = self.pad_if_smaller(image, self.size)
+        target = self.pad_if_smaller(target, self.size, fill=255)
         crop_params = T.RandomCrop.get_params(image, (self.size, self.size))
         image = F.crop(image, *crop_params)
         target = F.crop(target, *crop_params)
         return image, target
 
+    def pad_if_smaller(self, img, size, fill=0):
+        # 如果图像最小边长小于给定size，则用数值fill进行padding
+        min_size = min(img.size)
+        if min_size < size:
+            ow, oh = img.size
+            padh = size - oh if oh < size else 0
+            padw = size - ow if ow < size else 0
+            img = F.pad(img, (0, 0, padw, padh), fill=fill)
+        return img
 
-class CenterCrop(object):
-    def __init__(self, size):
-        self.size = size
-
-    def __call__(self, image, target):
-        image = F.center_crop(image, self.size)
-        target = F.center_crop(target, self.size)
-        return image, target
-
-
-class ToTensor(object):
+class ToTensor():
     def __call__(self, image, target):
         image = F.to_tensor(image)
         target = torch.as_tensor(np.array(target), dtype=torch.int64)
         return image, target
 
 
-class Normalize(object):
+class Normalize():
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std
@@ -143,8 +113,8 @@ class Normalize(object):
         image = F.normalize(image, mean=self.mean, std=self.std)
         return image, target
 
-
-if __name__ == '__main__':
-    l = data_import(os.path.join('data', 'weizmann_horse_db'))[1]
-    e= 0
-    k = 0
+# if __name__ == '__main__':
+#     root_path = os.path.join('data', 'weizmann_horse_db')
+#     transforms = get_transform(base_size = 520, crop_size = 480, train = True)
+#     l = data_import(root_path, transforms)[1]
+#     a = 0
