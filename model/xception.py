@@ -1,10 +1,7 @@
-import numpy as np
-import os, glob, datetime, time, math
+import  math
 import torch
 import torch.nn as nn
-import torch.nn.init as init
-from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import MultiStepLR
+
 
 class Depthwise_Separable_Conv(nn.Module):
     def __init__(self, in_channels, out_channels, stride = 1, dilation = 1):
@@ -96,6 +93,8 @@ class Entry_Flow(nn.Module):
         layer1 += [nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1,bias=False),
                    nn.BatchNorm2d(num_features=64),
                    nn.ReLU(inplace=True)]
+        self.relu = nn.ReLU(inplace=True)
+
         self.layer1 = nn.Sequential(*layer1)
 
         self.layer2 = Block(in_channels=64, out_channels=128, num=2, stride=2, start_with_relu=False)
@@ -105,9 +104,11 @@ class Entry_Flow(nn.Module):
     def forward(self, input):
         out = self.layer1(input)
         out = self.layer2(out)
+        out = self.relu(out)
+        low_level_features = out
         out = self.layer3(out)
         out = self.layer4(out)
-        return out
+        return low_level_features, out
 
 class Middle_Flow(nn.Module):
     def __init__(self):
@@ -150,10 +151,10 @@ class Modified_Aligned_Xception(nn.Module):
         self._initialize_weights()
 
     def forward(self, input):
-        out = self.entry(input)
+        low_level_features, out = self.entry(input)
         out = self.middle(out)
         out = self.exit(out)
-        return out
+        return low_level_features, out
 
     def _initialize_weights(self):
         for m in self.modules():

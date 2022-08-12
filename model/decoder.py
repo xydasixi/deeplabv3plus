@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.init as init
 
 class Decoder(nn.Module):
     def __init__(self, in_channels1, out_channels1, in_channels2, out_channels2, num_classes):
@@ -20,11 +19,11 @@ class Decoder(nn.Module):
                                    nn.Conv2d(in_channels=out_channels2, out_channels=num_classes, kernel_size=1, padding=0, bias=False)
                                    )
         self._initialize_weights()
-    def forward(self, x1, x2 ):
+    def forward(self, x1, x2):
         y1 = self.layer1(x1)
-        y2 = F.interpolate(x2, size=x1.size()[2:], mode = 'binear', align_corners=True)
+        y2 = F.interpolate(x2, size=x1.size()[2:], mode = 'bilinear', align_corners=True)
         out = self.layer2(torch.cat((y1,y2),1))
-        out = F.interpolate(out, scale_factor=4, mode = 'binear', align_corners=True)
+        out = F.interpolate(out, scale_factor=4, mode = 'bilinear', align_corners=True)
         return out
 
     def _initialize_weights(self):
