@@ -5,9 +5,9 @@ import torch
 from torchvision.transforms import functional as F
 from torchvision import transforms as T
 
-class data_import():
+class data_load():
     def __init__(self, root_path, transforms=None):
-        super(data_import, self).__init__()
+        super(data_load, self).__init__()
         image_path = os.path.join(root_path, 'horse')
         mask_path = os.path.join(root_path, 'mask')
         image_list = os.listdir(image_path)
