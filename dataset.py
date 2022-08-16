@@ -2,6 +2,7 @@ import numpy as np
 import os,random
 from PIL import Image
 import torch
+import cv2
 from torchvision.transforms import functional as F
 from torchvision import transforms as T
 
@@ -18,6 +19,9 @@ class data_load():
     def __getitem__(self, index):
         img = Image.open(self.img[index]).convert('RGB')
         target = Image.open(self.mask[index])
+        # img = cv2.imread(self.img[index])
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # target = cv2.imread(self.mask[index],0)
         img, target = self.transforms(img, target)
         return img, target
 
@@ -27,12 +31,12 @@ class data_load():
 class get_transform():
     def __init__(self, base_size, crop_size, train = True, hflip_prob=0.5, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
         trans = []
-        if train:
-            min_size = int(0.5 * base_size)
-            max_size = int(2.0 * base_size)
-            trans.extend([RandomResize(min_size, max_size), RandomHorizontalFlip(hflip_prob), RandomCrop(crop_size),])
-        else:
-            trans.append(RandomResize(base_size, base_size))
+        # if train:
+        #     min_size = int(0.5 * base_size)
+        #     max_size = int(2.0 * base_size)
+        #     trans.extend([RandomResize(min_size, max_size), RandomCrop(crop_size)])
+        # else:
+        trans.extend([RandomResize(base_size, base_size), CenterCrop(base_size)])
         trans.extend([ToTensor(),Normalize(mean=mean, std=std),])
         self.transforms = Compose(trans)
 
@@ -81,7 +85,7 @@ class RandomCrop():
 
     def __call__(self, image, target):
         image = self.pad_if_smaller(image, self.size)
-        target = self.pad_if_smaller(target, self.size, fill=255)
+        target = self.pad_if_smaller(target, self.size)
         crop_params = T.RandomCrop.get_params(image, (self.size, self.size))
         image = F.crop(image, *crop_params)
         target = F.crop(target, *crop_params)
@@ -96,6 +100,16 @@ class RandomCrop():
             padw = size - ow if ow < size else 0
             img = F.pad(img, (0, 0, padw, padh), fill=fill)
         return img
+
+
+class CenterCrop(object):
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, image, target):
+        image = F.center_crop(image, self.size)
+        target = F.center_crop(target, self.size)
+        return image, target
 
 class ToTensor():
     def __call__(self, image, target):
@@ -113,8 +127,8 @@ class Normalize():
         image = F.normalize(image, mean=self.mean, std=self.std)
         return image, target
 
-# if __name__ == '__main__':
-#     root_path = os.path.join('data', 'weizmann_horse_db')
-#     transforms = get_transform(base_size = 520, crop_size = 480, train = True)
-#     l = data_import(root_path, transforms)[1]
-#     a = 0
+if __name__ == '__main__':
+    root_path = os.path.join('data', 'weizmann_horse_db','train')
+    transforms = get_transform(base_size = 520, crop_size = 480, train = False)
+    l = data_load(root_path, transforms)[0]
+    l=0

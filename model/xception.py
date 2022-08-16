@@ -98,7 +98,7 @@ class Entry_Flow(nn.Module):
         self.layer1 = nn.Sequential(*layer1)
 
         self.layer2 = Block(in_channels=64, out_channels=128, num=2, stride=2, start_with_relu=False)
-        self.layer3 = Block(in_channels=128, out_channels=256, num=2, stride=2)
+        self.layer3 = Block(in_channels=128, out_channels=256, num=2, stride=2, start_with_relu=False)
         self.layer4 = Block(in_channels=256, out_channels=728, num=2, stride=2)
 
     def forward(self, input):

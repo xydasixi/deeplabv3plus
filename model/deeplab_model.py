@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from xception import Modified_Aligned_Xception
-from ASPP import ASPP
-from decoder import Decoder
+from model.xception import Modified_Aligned_Xception
+from model.ASPP import ASPP
+from model.decoder import Decoder
 
 class DeeplabV3_plus(nn.Module):
     def __init__(self, num_classes):
