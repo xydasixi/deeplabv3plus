@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import StepLR
 from model.deeplab_model import DeeplabV3_plus
 from dataset import data_load, get_transform
 from evaluation_index import ConfusionMatrix
+from torch.utils.tensorboard import SummaryWriter
 
 
 parser = argparse.ArgumentParser(description='PyTorch DeeplabV3+')
@@ -37,40 +38,60 @@ parser.add_argument("--amp", default=False, type=bool,
 args = parser.parse_args()
 
 
-def train(model, device, train_loader, optimizer, epoch, epoch_loss):
+def train(model, device, train_loader, optimizer, lr_scheduler, epoch, log):
     model.train()
     for i, (image, target) in enumerate(train_loader):
         image, target = image.to(device), target.to(device)
         out = model(image)
         optimizer.zero_grad()
         loss = criterion(out, target)
-        epoch_loss += loss.item()
         loss.backward()
         optimizer.step()
 
+        writer.add_scalar('train loss', loss, i + epoch * len(train_loader))
         if i % 10 == 0:
-            print('%4d %4d / %4d loss = %2.4f' % (epoch + 1, i, len(train_data) // args.batch_size, loss.item()))
+            print('Train : [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tepoch:{}\n'.format(
+                i * len(image), len(train_loader.dataset),
+                100. * i / len(train_loader), loss.item(), epoch))
+        log.append('Train : [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tepoch:{}\n'.format(
+            i * len(image), len(train_loader.dataset),
+            100. * i / len(train_loader), loss.item(), epoch))
+    lr_scheduler.step()
 
 
-def test(model, device, test_loader, num_classes):
+def test(model, device, test_loader, epoch, log, num_classes):
     model.eval()
     confmat = ConfusionMatrix(num_classes)
     with torch.no_grad():
         for index, (image, target) in enumerate(test_loader):
             image, target = image.to(device), target.to(device)
             output = model(image)
-
             confmat.update(target.flatten(), output.argmax(1).flatten())
 
-        confmat.reduce_from_all_processes()
-
-    return confmat
+    acc_global, acc, iu = confmat.compute()
+    writer.add_scalar('global correct', acc_global.item() * 100, epoch)
+    writer.add_scalar('mean IoU', iu.mean().item() * 100, epoch)
+    print('Test : global correct: {:.1f}\taverage row correct: {}\tIoU: {}\tmean IoU: {:.1f}\tepoch:{}\n'.format(
+        acc_global.item() * 100,
+        ['{:.1f}'.format(i) for i in (acc * 100).tolist()],
+        ['{:.1f}'.format(i) for i in (iu * 100).tolist()],
+        iu.mean().item() * 100,
+        epoch))
+    log.append('Test : global correct: {:.1f}\taverage row correct: {}\tIoU: {}\tmean IoU: {:.1f}\tepoch:{}\n'.format(
+        acc_global.item() * 100,
+        ['{:.1f}'.format(i) for i in (acc * 100).tolist()],
+        ['{:.1f}'.format(i) for i in (iu * 100).tolist()],
+        iu.mean().item() * 100,
+        epoch))
 
 
 if __name__ == '__main__':
     model = DeeplabV3_plus(num_classes=2)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     model.to(device)
+
+    log = []
+    writer = SummaryWriter()
 
     train_path = os.path.join('data', 'weizmann_horse_db', 'train')
     train_transforms = get_transform(base_size = 520, crop_size = 480, train = True)
@@ -80,19 +101,37 @@ if __name__ == '__main__':
     val_path = os.path.join('data', 'weizmann_horse_db', 'val')
     val_transforms = get_transform(base_size=520, crop_size=520, train=False)
     val_data = data_load(root_path=val_path, transforms=val_transforms)
-    l= val_data[0]
     val_loader = DataLoader(val_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 
     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
-    scheduler = StepLR(optimizer, step_size=2, gamma=0.94)
+    lr_scheduler = StepLR(optimizer, step_size=2, gamma=0.94)
 
     criterion = nn.CrossEntropyLoss()
-    for epoch in range(args.epochs):
-        epoch_loss = 0
-        confmat = test(model, device, val_loader, num_classes=2)
-        val_info = str(confmat)
-        print(val_info)
-        train(model, device, train_loader, optimizer, epoch, epoch_loss)
+
+    weights_path = 'weights/best_weights'
+    if os.listdir(weights_path):
+        weights_file = os.listdir('weights/best_weights')[-1]
+        weights = torch.load(os.path.join(weights_path, weights_file))
+        model.load_state_dict(weights['model'])
+        optimizer.load_state_dict(weights['optimizer'])
+        lr_scheduler.load_state_dict(weights['lr_scheduler'])
+        args.start_epoch = weights['epoch'] + 1
+
+    for epoch in range(args.start_epoch, args.epochs):
+        log.append(f"Train epoch: {epoch} / {args.epochs}\n")
+        train(model, device, train_loader, optimizer, lr_scheduler, epoch, log)
+        test(model, device, val_loader, epoch, log, num_classes=2)
+
+        save_file = {"model": model.state_dict(),
+                     "optimizer": optimizer.state_dict(),
+                     "lr_scheduler": lr_scheduler.state_dict(),
+                     "epoch": epoch,
+                     "args": args}
+        torch.save(save_file, "weights/model_{}.pth".format(epoch))
+
+    with open('result/SNN_train.txt', 'w+') as f:
+        for i in range(len(log)):
+            f.write(log[i])
 
 
 

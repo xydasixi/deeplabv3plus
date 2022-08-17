@@ -13,13 +13,11 @@ class ConfusionMatrix():
         with torch.no_grad():
             # 寻找GT中为目标的像素索引
             k = (a >= 0) & (a < n)
+
             # 统计像素真实类别a[k]被预测成类别b[k]的个数(这里的做法很巧妙)
             inds = n * a[k].to(torch.int64) + b[k]
             self.mat += torch.bincount(inds, minlength=n**2).reshape(n, n)
 
-    def reset(self):
-        if self.mat is not None:
-            self.mat.zero_()
 
     def compute(self):
         h = self.mat.float()
