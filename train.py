@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
 from model.deeplab_model import DeeplabV3_plus
 from dataset import data_load, get_transform
-from evaluation_index import ConfusionMatrix
+from evaluation_index import ConfusionMatrix, boundary_iou
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -62,26 +62,32 @@ def train(model, device, train_loader, optimizer, lr_scheduler, epoch, log):
 def test(model, device, test_loader, epoch, log, num_classes):
     model.eval()
     confmat = ConfusionMatrix(num_classes)
+    b_iou = boundary_iou()
     with torch.no_grad():
         for index, (image, target) in enumerate(test_loader):
             image, target = image.to(device), target.to(device)
             output = model(image)
             confmat.update(target.flatten(), output.argmax(1).flatten())
+            b_iou.update(target, output.argmax(1))
 
     acc_global, acc, iu = confmat.compute()
+    biu = b_iou.compute()
     writer.add_scalar('global correct', acc_global.item() * 100, epoch)
     writer.add_scalar('mean IoU', iu.mean().item() * 100, epoch)
-    print('Test : global correct: {:.1f}\taverage row correct: {}\tIoU: {}\tmean IoU: {:.1f}\tepoch:{}\n'.format(
+    writer.add_scalar('boundary IoU', biu * 100, epoch)
+    print('Test : global correct: {:.1f}\taverage row correct: {}\tIoU: {}\tmean IoU: {:.1f}\tBoundary IoU: {:.1f}\tepoch:{}\n'.format(
         acc_global.item() * 100,
         ['{:.1f}'.format(i) for i in (acc * 100).tolist()],
         ['{:.1f}'.format(i) for i in (iu * 100).tolist()],
         iu.mean().item() * 100,
+        biu * 100,
         epoch))
-    log.append('Test : global correct: {:.1f}\taverage row correct: {}\tIoU: {}\tmean IoU: {:.1f}\tepoch:{}\n'.format(
+    log.append('Test : global correct: {:.1f}\taverage row correct: {}\tIoU: {}\tmean IoU: {:.1f}\tBoundary IoU: {:.1f}\tepoch:{}\n'.format(
         acc_global.item() * 100,
         ['{:.1f}'.format(i) for i in (acc * 100).tolist()],
         ['{:.1f}'.format(i) for i in (iu * 100).tolist()],
         iu.mean().item() * 100,
+        biu * 100,
         epoch))
 
 
@@ -94,7 +100,7 @@ if __name__ == '__main__':
     writer = SummaryWriter()
 
     train_path = os.path.join('data', 'weizmann_horse_db', 'train')
-    train_transforms = get_transform(base_size = 520, crop_size = 480, train = True)
+    train_transforms = get_transform(base_size = 520, crop_size = 520, train = True)
     train_data = data_load(root_path=train_path, transforms=train_transforms)
     train_loader = DataLoader(train_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 
