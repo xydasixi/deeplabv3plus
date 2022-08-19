@@ -2,7 +2,6 @@ import numpy as np
 import os,random
 from PIL import Image
 import torch
-import cv2
 from torchvision.transforms import functional as F
 from torchvision import transforms as T
 
@@ -146,8 +145,8 @@ class Normalize():
         image = F.normalize(image, mean=self.mean, std=self.std)
         return image, target
 
-if __name__ == '__main__':
-    root_path = os.path.join('data', 'weizmann_horse_db','train')
-    transforms = get_transform(base_size = 520, crop_size = 480, train = False)
-    l = data_load(root_path, transforms)[0]
-    l=0
+# if __name__ == '__main__':
+#     root_path = os.path.join('data', 'weizmann_horse_db','train')
+#     transforms = get_transform(base_size = 520, crop_size = 480, train = False)
+#     l = data_load(root_path, transforms)[0]
+#     l=0
