@@ -29,14 +29,14 @@ class data_load():
         return len(self.img)
 
 class get_transform():
-    def __init__(self, base_size, crop_size, train = True, hflip_prob=0.5, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    def __init__(self, base_size, pad_size, train = True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
         trans = []
         # if train:
         #     min_size = int(0.5 * base_size)
         #     max_size = int(2.0 * base_size)
         #     trans.extend([RandomResize(min_size, max_size), RandomCrop(crop_size)])
         # else:
-        trans.extend([RandomResize(base_size, base_size), CenterCrop(base_size)])
+        trans.extend([RandomResize(base_size, base_size), Pad(pad_size), CenterCrop(base_size+2*pad_size)])
         trans.extend([ToTensor(),Normalize(mean=mean, std=std),])
         self.transforms = Compose(trans)
 
@@ -98,8 +98,17 @@ class RandomCrop():
             ow, oh = img.size
             padh = size - oh if oh < size else 0
             padw = size - ow if ow < size else 0
-            img = F.pad(img, (0, 0, padw, padh), fill=fill)
+            img = F.pad(img, size, fill=fill)
         return img
+
+class Pad():
+    def __init__(self, pad_size):
+        self.size = pad_size
+    def __call__(self, image, target):
+        size = self.size
+        image = F.pad(image, size, padding_mode='edge')
+        target = F.pad(target, size, fill=0)
+        return image, target
 
 
 class CenterCrop(object):
@@ -110,6 +119,16 @@ class CenterCrop(object):
         image = F.center_crop(image, self.size)
         target = F.center_crop(target, self.size)
         return image, target
+
+    def pad_if_smaller(self, img, size, fill=0):
+        # 如果图像最小边长小于给定size，则用数值fill进行padding
+        min_size = min(img.size)
+        if min_size < size:
+            ow, oh = img.size
+            padh = size - oh if oh < size else 0
+            padw = size - ow if ow < size else 0
+            img = F.pad(img, (0, 0, padw, padh), fill=fill)
+        return img
 
 class ToTensor():
     def __call__(self, image, target):

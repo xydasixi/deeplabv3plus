@@ -11,13 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 parser = argparse.ArgumentParser(description='PyTorch DeeplabV3+')
-parser.add_argument("--data-path", default="/data/", help="VOCdevkit root")
+parser.add_argument("--data-path", default="image\\train_val", help="weizmann_horse_db root")
 parser.add_argument("--num-classes", default=20, type=int)
 parser.add_argument("--aux", default=True, type=bool, help="auxilier loss")
 parser.add_argument("--device", default="cuda", help="training device")
 parser.add_argument("-b", "--batch-size", default=5, type=int)
 parser.add_argument("--num-workers", default=4, type=int)
-parser.add_argument("--epochs", default=30, type=int, metavar="N",
+parser.add_argument("--epochs", default=40, type=int, metavar="N",
                     help="number of total epochs to train")
 
 parser.add_argument('--lr', default=0.05, type=float, help='initial learning rate')
@@ -59,12 +59,12 @@ def train(model, device, train_loader, optimizer, lr_scheduler, epoch, log):
     lr_scheduler.step()
 
 
-def test(model, device, test_loader, epoch, log, num_classes):
+def val(model, device, val_loader, epoch, log, num_classes):
     model.eval()
     confmat = ConfusionMatrix(num_classes)
     b_iou = boundary_iou()
     with torch.no_grad():
-        for index, (image, target) in enumerate(test_loader):
+        for index, (image, target) in enumerate(val_loader):
             image, target = image.to(device), target.to(device)
             output = model(image)
             confmat.update(target.flatten(), output.argmax(1).flatten())
@@ -99,13 +99,13 @@ if __name__ == '__main__':
     log = []
     writer = SummaryWriter()
 
-    train_path = os.path.join('data', 'weizmann_horse_db', 'train')
-    train_transforms = get_transform(base_size = 520, crop_size = 520, train = True)
+    train_path = os.path.join(args.data_path,  'train')
+    train_transforms = get_transform(base_size = 460, pad_size = 30, train = True)
     train_data = data_load(root_path=train_path, transforms=train_transforms)
     train_loader = DataLoader(train_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 
-    val_path = os.path.join('data', 'weizmann_horse_db', 'val')
-    val_transforms = get_transform(base_size=520, crop_size=520, train=False)
+    val_path = os.path.join(args.data_path, 'val')
+    val_transforms = get_transform(base_size=460, pad_size=30, train=False)
     val_data = data_load(root_path=val_path, transforms=val_transforms)
     val_loader = DataLoader(val_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     for epoch in range(args.start_epoch, args.epochs):
         log.append(f"Train epoch: {epoch} / {args.epochs}\n")
         train(model, device, train_loader, optimizer, lr_scheduler, epoch, log)
-        test(model, device, val_loader, epoch, log, num_classes=2)
+        val(model, device, val_loader, epoch, log, num_classes=2)
 
         save_file = {"model": model.state_dict(),
                      "optimizer": optimizer.state_dict(),
@@ -135,7 +135,7 @@ if __name__ == '__main__':
                      "args": args}
         torch.save(save_file, "weights/model_{}.pth".format(epoch))
 
-    with open('result/SNN_train.txt', 'w+') as f:
+    with open('result/train_val_result.txt', 'w+') as f:
         for i in range(len(log)):
             f.write(log[i])
 
