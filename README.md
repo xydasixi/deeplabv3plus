@@ -28,7 +28,7 @@
   |   ├──ASPP.py
   |   ├──decoder.py
   |   ├──deeplab_model.py
-  |   └──xception.py：用于测试模型效果的图片
+  |   └──xception.py
   ├── result: 记录模型训练及验证过程中的损失及评价指标的文本文件
   ├── runs: 存放tensorboard的log文件
   ├── dataset.py: 数据载入及对其进行预处理
