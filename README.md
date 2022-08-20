@@ -19,14 +19,18 @@
 * 详细环境配置见```requirements.txt```
 ## 文件结构：
 ```
-  ├── image: 模型的backbone以及DeepLabv3的搭建
+  ├── image: 存放图片
   |   ├──train_val: 用于训练和验证的数据集
   |   |  ├──train：训练数据集（277张）
   |   |  └──val：验证数据集（50张）
   |   └──demo：用于测试模型效果的图片
   ├── model: 模型的子模块及DeepLabv3+的搭建
+  |   ├──ASPP.py
+  |   ├──decoder.py
+  |   ├──deeplab_model.py
+  |   └──xception.py：用于测试模型效果的图片
   ├── result: 记录模型训练及验证过程中的损失及评价指标的文本文件
-  ├── runs: tensorboard相关文件
+  ├── runs: 存放tensorboard的log文件
   ├── dataset.py: 数据载入及对其进行预处理
   ├── demo.py: 简易的预测脚本，使用训练好的权重进行预测
   ├── evaluation_index.py: 计算评价指标PA，mIoU，Boundary IoU
