@@ -61,18 +61,23 @@ class boundary_iou():
         return b_iou
 
     def boundary_iou(self, gt, dt, dilation_ratio=0.02):
-
+        """
+        计算两输入图片边界的交并集
+        """
         gt = gt.astype(np.uint8)
         dt = dt.astype(np.uint8)
 
         #计算预测图片的边界和GT图片的边界的交并集
         gt_boundary = self.mask_to_boundary(gt, dilation_ratio)
         dt_boundary = self.mask_to_boundary(dt, dilation_ratio)
-        intersection = ((gt_boundary * dt_boundary) > 0).sum()
-        union = ((gt_boundary + dt_boundary) > 0).sum()
+        intersection = ((gt_boundary * dt_boundary) > 0).sum() #交集
+        union = ((gt_boundary + dt_boundary) > 0).sum()#并集
         return intersection, union
 
     def mask_to_boundary(self, mask, dilation_ratio=0.02):
+        """
+        获得图片的边界
+        """
         h, w = mask.shape
         # 计算图像对角线长度，与dilation_ratio相乘得到腐蚀卷积核大小
         img_diag = np.sqrt(h ** 2 + w ** 2)

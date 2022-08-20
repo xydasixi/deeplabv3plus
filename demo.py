@@ -52,16 +52,19 @@ def Pretreatment(root_path):
 if __name__ == '__main__':
     root_path = 'image\\demo' #数据集根目录
     batchsize=5
+
+    #数据集导入及预处理
     transforms = get_transform(base_size=460, pad_size=30, train=True)
     data = data_load(root_path=root_path, transforms=transforms)
     loader = DataLoader(data, batch_size=batchsize, num_workers=4)
-
     mask_list = Pretreatment(root_path)
+
 
     model = DeeplabV3_plus(num_classes=2)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
+    #加载预训练模型权重
     weights_path = 'weights/best_weights'
     weights_file = os.listdir('weights/best_weights')[-1]
     weights = torch.load(os.path.join(weights_path, weights_file))
@@ -72,6 +75,7 @@ if __name__ == '__main__':
         image, target = image.to(device), target.to(device)
         output = model(image).argmax(1)
         for i in range(batchsize):
+            #将输出mask化为调色板模式并储存
             mask_pre = output[i]
             mask_pre = mask_visual(mask_pre.cpu().numpy())
             mask_name = os.path.join('image\\demo\\outputs', mask_list[index*batchsize+i])

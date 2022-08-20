@@ -5,6 +5,10 @@ from model.ASPP import ASPP
 from model.decoder import Decoder
 
 class DeeplabV3_plus(nn.Module):
+    """
+    根据backbone--改进的xception，ASPP模块，decoder模块组成Deeplabv3+模型
+    num_classes表示包含背景的类别数量
+    """
     def __init__(self, num_classes):
         super(DeeplabV3_plus, self).__init__()
         self.backbone = Modified_Aligned_Xception()

@@ -4,6 +4,9 @@ import torch.nn.functional as F
 import torch.nn.init as init
 
 class ASPP(nn.Module):
+    """
+    ASPP模块
+    """
     def __init__(self, in_channels, out_channels):
         super(ASPP, self).__init__()
         self.pyramid1 = nn.Sequential(nn.Conv2d(in_channels=in_channels,out_channels=out_channels, kernel_size = 1, bias=False),

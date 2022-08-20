@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Decoder(nn.Module):
+    """
+    decoder模块
+    """
     def __init__(self, in_channels1, out_channels1, in_channels2, out_channels2, num_classes):
         super(Decoder, self).__init__()
         self.layer1 = nn.Sequential(nn.Conv2d(in_channels=in_channels1, out_channels=out_channels1, kernel_size=1, padding=0,bias=False),
