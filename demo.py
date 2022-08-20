@@ -8,29 +8,41 @@ from model.deeplab_model import DeeplabV3_plus
 from dataset import data_load, get_transform
 
 def mask_visual(img):
+    """
+    将mask文件转化为调色板模式，便于显示
+    """
     mat = np.array(img)
     mat = mat.astype(np.uint8)
+
+    # 实现array到image的转换
     dst = Image.fromarray(mat, 'P')
+
     bin_colormap = [211, 211, 211] + [70, 130, 180] + [255, 255, 255] * 253  # 二值调色板
     dst.putpalette(bin_colormap)
     return dst
 
 def Pretreatment(root_path):
+    """
+    对预测的数据集进行预处理并保存到相关文件夹中
+    """
+    # 获取数据集的各个图片和mask的文件名
     image_list = os.listdir(os.path.join(root_path, 'horse'))
     mask_list = os.listdir(os.path.join(root_path, 'mask'))
     base_size = 460
     pad_size = 30
-    # RandomResize = dataset.RandomResize(base_size, base_size)
-    # CenterCrop = dataset.CenterCrop(base_size + 2 * pad_size)
-    # Pad = dataset.Pad(pad_size)
+
+    # 定义预处理操作
     transforms = dataset.Compose([dataset.RandomResize(base_size, base_size),dataset.Pad(pad_size),dataset.CenterCrop(base_size + 2 * pad_size)])
     for i in range(len(image_list)):
+        # 获取图片和mask文件路径并打开
         image_name =  os.path.join(os.path.join(root_path, 'horse'), image_list[i])
         mask_name = os.path.join(os.path.join(root_path, 'mask'), mask_list[i])
         image = Image.open(image_name).convert('RGB')
         mask = Image.open(mask_name)
+        #对数据集进行预处理
         image_save,mask_save= transforms(image, mask)
         mask_save = mask_visual(mask_save)
+        #保存预处理后的文件
         image_name = os.path.join(os.path.join(root_path, 'horse_pretreatment'), image_list[i])
         mask_name = os.path.join(os.path.join(root_path, 'mask_pretreatment'), mask_list[i])
         image_save.save(image_name)
@@ -38,7 +50,7 @@ def Pretreatment(root_path):
     return mask_list
 
 if __name__ == '__main__':
-    root_path = 'image\\demo'
+    root_path = 'image\\demo' #数据集根目录
     batchsize=5
     transforms = get_transform(base_size=460, pad_size=30, train=True)
     data = data_load(root_path=root_path, transforms=transforms)
